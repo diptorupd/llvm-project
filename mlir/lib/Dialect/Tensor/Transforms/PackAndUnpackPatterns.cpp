@@ -512,18 +512,25 @@ struct FoldUnPackIntoParallelInsertSlice
     // NOTE: This constraint is probably not needed.
     //       For now, relaxed and changed to unpack destination
     //       to preserve destination passing style semantics.
+    // NOTE2: Shared_outs producer must be a pack if shared_outs
+    //        value is read (have any users other than insert_slice).
+    //        If shared_outs are write only, then this check can
+    //        probably be relaxed.
+    // TODO: Review the shared_outs preconditions.
+    //       Relax the constraints if possible or note down
+    //       unsupported cases for future work.
     // Create a new scf.forall operation, updating its output.
-    // Value loopOperand =
-    //     forallOp.getTiedOpOperand(forallOp->getResult(0))->get();
-    // tensor::PackOp packOp =
-    //     dyn_cast_or_null<tensor::PackOp>(loopOperand.getDefiningOp());
-    // if (!packOp)
-    //   return failure();
-    // Value newLoopOperand = packOp.getSource();
+    Value loopOperand =
+        forallOp.getTiedOpOperand(forallOp->getResult(0))->get();
+    tensor::PackOp packOp =
+        dyn_cast_or_null<tensor::PackOp>(loopOperand.getDefiningOp());
+    if (!packOp)
+      return failure();
+    Value newLoopOperand = packOp.getSource();
 
     // TODO: Are there any extra checks needed to see if `shared_outs` can be
     //       replaced?
-    Value newLoopOperand = unPackOp.getDest();
+    // Value newLoopOperand = unPackOp.getDest();
     // TODO: Can this be relaxed into multiple outputs?
     //       It probably can be left for future work, then
     //       add NYI comment.
