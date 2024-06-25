@@ -91,6 +91,10 @@ void populateSimplifyPackAndUnpackPatterns(RewritePatternSet &patterns);
 /// respectively.
 void populateFoldIntoPackAndUnpackPatterns(RewritePatternSet &patterns);
 
+/// Populates `patterns` with patterns that fold `tensor.pack` and
+/// `tensor.unpack` operations into other operations.
+void populateFoldPackAndUnpackPatterns(RewritePatternSet &patterns);
+
 using ControlFoldFn = std::function<bool(OpOperand *)>;
 
 /// Populates `patterns` with patterns that replace tensor ops (such as

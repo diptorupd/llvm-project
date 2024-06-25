@@ -77,6 +77,11 @@ struct TestTensorTransforms
       llvm::cl::desc("Test folding ops into tensor.pack and tensor.unpack"),
       llvm::cl::init(false)};
 
+  Option<bool> testFoldPackAndUnpack{
+      *this, "test-fold-pack-and-unpack",
+      llvm::cl::desc("Test folding tensor.pack and tensor.unpack into ops"),
+      llvm::cl::init(false)};
+
   Option<bool> useForeach{
       *this, "use-foreach",
       llvm::cl::desc(
@@ -140,6 +145,12 @@ applyDropRedundantInsertSliceRankExpansionPatterns(Operation *rootOp) {
 static void applySimplifyPackUnpackPatterns(Operation *rootOp) {
   RewritePatternSet patterns(rootOp->getContext());
   tensor::populateSimplifyPackAndUnpackPatterns(patterns);
+  (void)applyPatternsAndFoldGreedily(rootOp, std::move(patterns));
+}
+
+static void applyFoldPackAndUnpackPatterns(Operation *rootOp) {
+  RewritePatternSet patterns(rootOp->getContext());
+  tensor::populateFoldPackAndUnpackPatterns(patterns);
   (void)applyPatternsAndFoldGreedily(rootOp, std::move(patterns));
 }
 
@@ -388,6 +399,8 @@ void TestTensorTransforms::runOnOperation() {
     applyReassociativeReshapeFoldingPatterns(rootOp);
   if (testFoldIntoPackAndUnpack)
     applyFoldIntoPackAndUnpackPatterns(rootOp);
+  if (testFoldPackAndUnpack)
+    applyFoldPackAndUnpackPatterns(rootOp);
   if (testRewriteExtractSliceWithTiledCollapseShape) {
     if (failed(
             applyRewriteExtractFromCollapseShapePatterns(rootOp, useForeach)))
