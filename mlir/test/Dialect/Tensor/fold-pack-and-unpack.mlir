@@ -77,6 +77,63 @@ func.func @fold_unpack_into_parallel_insert_slice_partial(
   return %unpack : tensor<64x64xbf16>
 }
 
+// Negative test with an unsupported unpack op, should be a no op.
+
+// CHECK-LABEL: @expected_failure_unpack_with_outer_dims_perm
+
+func.func @expected_failure_unpack_with_outer_dims_perm(
+    %arg0: tensor<64x64xbf16>, %arg1: tensor<32x32xbf16>, %arg2: tensor<64x64xbf16>, %x: index, %y: index) -> tensor<64x64xbf16> {
+  %packed_layout = tensor.empty() : tensor<2x2x32x32xbf16>
+  %pack = tensor.pack %arg0 inner_dims_pos = [0, 1] inner_tiles = [32, 32] into %packed_layout
+    : tensor<64x64xbf16> -> tensor<2x2x32x32xbf16>
+  %0 = scf.forall (%i, %j) in (%x, %y) shared_outs(%out = %pack) -> (tensor<2x2x32x32xbf16>) {
+    scf.forall.in_parallel {
+      tensor.parallel_insert_slice %arg1 into %out[%i, %j, 0, 0] [1, 1, 32, 32] [1, 1, 1, 1] : tensor<32x32xbf16> into tensor<2x2x32x32xbf16>
+    }
+  }
+  %unpack = tensor.unpack %0 outer_dims_perm = [1, 0] inner_dims_pos = [0, 1] inner_tiles = [32, 32] into %arg2
+    : tensor<2x2x32x32xbf16> -> tensor<64x64xbf16>
+  return %unpack : tensor<64x64xbf16>
+}
+
+
+// Negative test with an unsupported unsupported parallel_insert_slice, should be a no op.
+
+// CHECK-LABEL: @expected_failure_for_unsupported_parallel_insert_slice_indexing1
+
+func.func @expected_failure_for_unsupported_parallel_insert_slice_indexing1(
+    %arg0: tensor<64x64xbf16>, %arg1: tensor<32x32xbf16>, %arg2: tensor<64x64xbf16>, %x: index, %y: index) -> tensor<64x64xbf16> {
+  %packed_layout = tensor.empty() : tensor<2x2x32x32xbf16>
+  %pack = tensor.pack %arg0 inner_dims_pos = [0, 1] inner_tiles = [32, 32] into %packed_layout
+    : tensor<64x64xbf16> -> tensor<2x2x32x32xbf16>
+  %0 = scf.forall (%i, %j) in (%x, %y) shared_outs(%out = %pack) -> (tensor<2x2x32x32xbf16>) {
+    scf.forall.in_parallel {
+      tensor.parallel_insert_slice %arg1 into %out[%i, 0, 0, 0] [1, 1, 32, 32] [1, 1, 1, 1] : tensor<32x32xbf16> into tensor<2x2x32x32xbf16>
+    }
+  }
+  %unpack = tensor.unpack %0 inner_dims_pos = [0, 1] inner_tiles = [32, 32] into %arg2
+    : tensor<2x2x32x32xbf16> -> tensor<64x64xbf16>
+  return %unpack : tensor<64x64xbf16>
+}
+
+// Negative test with an unsupported unsupported parallel_insert_slice, should be a no op.
+
+// CHECK-LABEL: @expected_failure_for_unsupported_parallel_insert_slice_indexing2
+func.func @expected_failure_for_unsupported_parallel_insert_slice_indexing2(
+    %arg0: tensor<64x64xbf16>, %arg1: tensor<32x32xbf16>, %arg2: tensor<64x64xbf16>, %x: index, %y: index) -> tensor<64x64xbf16> {
+  %packed_layout = tensor.empty() : tensor<2x2x32x32xbf16>
+  %pack = tensor.pack %arg0 inner_dims_pos = [0, 1] inner_tiles = [32, 32] into %packed_layout
+    : tensor<64x64xbf16> -> tensor<2x2x32x32xbf16>
+  %0 = scf.forall (%i, %j) in (%x, %y) shared_outs(%out = %pack) -> (tensor<2x2x32x32xbf16>) {
+    scf.forall.in_parallel {
+      tensor.parallel_insert_slice %arg1 into %out[%j, %i, 0, 0] [1, 1, 32, 32] [1, 1, 1, 1] : tensor<32x32xbf16> into tensor<2x2x32x32xbf16>
+    }
+  }
+  %unpack = tensor.unpack %0 inner_dims_pos = [0, 1] inner_tiles = [32, 32] into %arg2
+    : tensor<2x2x32x32xbf16> -> tensor<64x64xbf16>
+  return %unpack : tensor<64x64xbf16>
+}
+
 // CHECK-LABEL: @fold_unpack_into_parallel_insert_slice_partial
 // TODO: Add expected IR checks.
 
